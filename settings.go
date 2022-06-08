@@ -69,10 +69,12 @@ type MjpegSettings struct {
 
 // CameraSettings settings for camera settings
 type CameraSettings struct {
-	Address string `json:"address"`
-	Port    int    `json:"port"`
-	Width   int    `json:"width"`
-	Height  int    `json:"height"`
+	Address       string `json:"address"`
+	Port          int    `json:"port"`
+	Width         int    `json:"width"`
+	Height        int    `json:"height"`
+	ReducedWidth  int    `json:"reduced_width"`
+	ReducedHeight int    `json:"reduced_height"`
 }
 
 // VideoCaptureDeviceSettings settings for device settings

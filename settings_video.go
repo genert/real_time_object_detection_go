@@ -9,7 +9,6 @@ type VideoSettings struct {
 	Height        int    `json:"height"`
 	ReducedWidth  int    `json:"reduced_width"`
 	ReducedHeight int    `json:"reduced_height"`
-	CameraID      string `json:"camera_id"`
 
 	// Exported, but not from JSON
 	ScaleX float64 `json:"-"`

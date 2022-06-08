@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/hybridgroup/mjpeg"
 	"github.com/mike1808/h264decoder/decoder"
 	"github.com/pkg/errors"
 	"github.com/projecthunt/reuseable"
+	"github.com/rs/cors"
 	"gocv.io/x/gocv"
 )
 
@@ -65,11 +67,20 @@ func NewApp(settings *AppSettings) (*Application, error) {
 // StartMJPEGStream Start MJPEG video stream in separate goroutine
 func (app *Application) StartMJPEGStream() *mjpeg.Stream {
 	stream := mjpeg.NewStream()
+
 	go func() {
 		fmt.Printf("Starting MJPEG on http://localhost:%d\n", app.settings.MjpegSettings.Port)
-		http.Handle("/", stream)
-		err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", app.settings.MjpegSettings.Port), nil)
-		if err != nil {
+
+		router := mux.NewRouter()
+		c := cors.New(cors.Options{
+			AllowedOrigins:   []string{"*"},
+			AllowCredentials: true,
+		})
+
+		router.HandleFunc("/", stream.ServeHTTP)
+		http.Handle("/", c.Handler(router))
+
+		if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", app.settings.MjpegSettings.Port), nil); err != nil {
 			log.Fatalln(err)
 		}
 	}()
@@ -171,13 +182,21 @@ func (app *Application) Run() error {
 		}
 
 		/* Scale frame */
-		err := img.Preprocess(settings.VideoSettings.ReducedWidth, settings.VideoSettings.ReducedHeight)
-		if err != nil {
+		var width, height int
+		if settings.Source == "camera" && settings.CameraSettings.ReducedWidth != settings.CameraSettings.Width && settings.CameraSettings.ReducedHeight != settings.CameraSettings.Height {
+			width = settings.CameraSettings.ReducedWidth
+			height = settings.CameraSettings.ReducedHeight
+		} else {
+			width = settings.VideoSettings.ReducedWidth
+			height = settings.VideoSettings.ReducedHeight
+		}
+		if err := img.Preprocess(width, height); err != nil {
 			fmt.Printf("Can't preprocess. Error: %s. Sleep for 400ms\n", err.Error())
 			time.Sleep(400 * time.Millisecond)
 			continue
 		}
 
+		/* Detection */
 		if settings.NeuralNetworkSettings.Enable {
 			detected := app.performDetectionSequential(img, settings.NeuralNetworkSettings.NetClasses, settings.NeuralNetworkSettings.TargetClasses)
 			if len(detected) != 0 {
