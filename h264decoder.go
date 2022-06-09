@@ -2,7 +2,6 @@ package ml
 
 import (
 	"fmt"
-	"image"
 	"unsafe"
 )
 
@@ -78,7 +77,7 @@ func (d *h264Decoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
-func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
+func (d *h264Decoder) decode(nalu []byte) (C.AVFrame, error) {
 	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, nalu...)
 
 	// send frame to decoder
@@ -116,7 +115,7 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 			return nil, fmt.Errorf("av_frame_get_buffer() err")
 		}
 
-		d.swsCtx = C.sws_getContext(d.srcFrame.width, d.srcFrame.height, C.AV_PIX_FMT_YUV420P,
+		d.swsCtx = C.sws_getContext(d.srcFrame.width, d.srcFrame.height, 3,
 			d.dstFrame.width, d.dstFrame.height, (int32)(d.dstFrame.format), C.SWS_BILINEAR, nil, nil, nil)
 		if d.swsCtx == nil {
 			return nil, fmt.Errorf("sws_getContext() err")
@@ -133,12 +132,5 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 		return nil, fmt.Errorf("sws_scale() err")
 	}
 
-	// embed frame into an image.Image
-	return &image.RGBA{
-		Pix:    d.dstFramePtr,
-		Stride: 4 * (int)(d.dstFrame.width),
-		Rect: image.Rectangle{
-			Max: image.Point{X: (int)(d.dstFrame.width), Y: (int)(d.dstFrame.height)},
-		},
-	}, nil
+	return d.dstFrame, nil
 }

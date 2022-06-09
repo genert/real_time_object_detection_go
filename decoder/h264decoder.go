@@ -1,5 +1,8 @@
 package decoder
 
+/*
+#include <stdlib.h>
+*/
 import "C"
 import (
 	"errors"
@@ -100,7 +103,6 @@ func (h *H264Decoder) Decode(data []byte) (*Frame, error) {
 	}
 
 	frame, nread, isFrameAvailable, err := h.decodeFrameImpl(data)
-
 	if err != nil && nread < 0 {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package ml
 
 import (
 	"fmt"
-	"github.com/genert/ml/decoder"
 	"image"
 	"image/color"
 	"log"
@@ -126,11 +125,11 @@ func (app *Application) Run() error {
 	img := NewFrameData()
 	buf := make([]byte, 1514)
 
-	d, err := decoder.New(decoder.PixelFormatBGR)
+	d, err := newH264Decoder()
 	if err != nil {
 		return errors.Wrap(err, "failed to create H264 decoder")
 	}
-	defer d.Close()
+	defer d.close()
 
 	fmt.Println("Ready to process frames")
 
@@ -154,7 +153,7 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			frame, err := d.Decode(buf[72:n])
+			frame, err := d.decode(buf[72:n])
 			if err != nil {
 				fmt.Println("Failed to decode frame. Sleep for 400 ms")
 				continue
