@@ -158,6 +158,12 @@ func (app *Application) Run() error {
 				continue
 			}
 
+			if frame == nil {
+				fmt.Println("Empty frame received. Sleep for 400 ms")
+				time.Sleep(400 * time.Millisecond)
+				continue
+			}
+
 			frameImg, err := gocv.ImageToMatRGB(frame)
 			if err != nil {
 				return errors.Wrap(err, "failed to convert image to RGB")
