@@ -2,6 +2,7 @@ package ml
 
 import (
 	"fmt"
+	"github.com/genert/ml/decoder"
 	"image"
 	"image/color"
 	"log"
@@ -109,7 +110,7 @@ func (app *Application) Run() error {
 		}
 	} else if app.settings.Source == "video" {
 		fmt.Println("Starting to capture video")
-		videoCapture, err = gocv.OpenVideoCapture(settings.VideoSettings.Source)
+		videoCapture, err = gocv.OpenVideoCapture("udp://192.168.1.80:35001")
 		if err != nil {
 			return errors.Wrap(err, "Can't open video capture")
 		}
@@ -125,11 +126,11 @@ func (app *Application) Run() error {
 	img := NewFrameData()
 	buf := make([]byte, 1514)
 
-	h264dec, err := newH264Decoder()
+	d, err := decoder.New(decoder.PixelFormatBGR)
 	if err != nil {
 		return errors.Wrap(err, "failed to create H264 decoder")
 	}
-	defer h264dec.close()
+	defer d.Close()
 
 	/* Read frames in a */
 	for {
@@ -151,25 +152,22 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			frame, err := h264dec.decode(buf[72:n])
+			frames, err := d.Decode(buf[72:n])
 			if err != nil {
 				fmt.Println("Failed to decode frame. Sleep for 400 ms")
 				time.Sleep(400 * time.Millisecond)
 				continue
 			}
 
-			if frame == nil {
+			if len(frames) == 0 {
 				fmt.Println("Empty frame received. Sleep for 400 ms")
 				time.Sleep(400 * time.Millisecond)
 				continue
 			}
 
-			frameImg, err := gocv.ImageToMatRGB(frame)
-			if err != nil {
-				return errors.Wrap(err, "failed to convert image to RGB")
+			if err := img.Load(frames[0]); err != nil {
+				return fmt.Errorf("failed to load image")
 			}
-
-			img.ImgSource = frameImg
 		}
 
 		/* Skip empty frame */

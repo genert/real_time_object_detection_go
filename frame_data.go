@@ -2,11 +2,12 @@ package ml
 
 import (
 	"bytes"
-	"github.com/mike1808/h264decoder/decoder"
 	"image"
 	"image/jpeg"
 
 	"gocv.io/x/gocv"
+
+	"github.com/genert/ml/decoder"
 )
 
 // FrameData Wrapper around gocv.Mat

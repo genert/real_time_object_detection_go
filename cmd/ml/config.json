@@ -24,7 +24,7 @@
     "port": 35678
   },
   "neural_network_settings": {
-    "enable": true,
+    "enable": false,
     "target": "fp32",
     "backend": "opencv",
     "darknet_cfg": "yolov4.cfg",
