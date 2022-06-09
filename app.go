@@ -163,13 +163,13 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			m, err := gocv.NewMatFromBytes(frame.Height, frame.Width, gocv.MatTypeCV8UC3, frame.Data)
+			m, err := gocv.ImageToMatRGB(frame)
 			if err != nil {
 				return err
 			}
 
 			img.ImgSource = m
-			frame.Data = nil
+			frame = nil
 		}
 
 		/* Skip empty frame */

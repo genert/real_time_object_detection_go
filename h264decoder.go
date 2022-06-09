@@ -2,6 +2,7 @@ package ml
 
 import (
 	"fmt"
+	"image"
 	"unsafe"
 )
 
@@ -10,13 +11,6 @@ import (
 // #include <libavutil/imgutils.h>
 // #include <libswscale/swscale.h>
 import "C"
-
-// Frame represents decoded frame from H.264 stream
-// Data field will contain bitmap data in the pixel format specified in the decoder
-type Frame struct {
-	Data                  []byte
-	Width, Height, Stride int
-}
 
 func frameData(frame *C.AVFrame) **C.uint8_t {
 	return (**C.uint8_t)(unsafe.Pointer(&frame.data[0]))
@@ -84,8 +78,8 @@ func (d *h264Decoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
-func (d *h264Decoder) decode(nalu []byte) (*Frame, error) {
-	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, nalu...)
+func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
+	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, []uint8(nalu)...)
 
 	// send frame to decoder
 	d.avPacket.data = (*C.uint8_t)(C.CBytes(nalu))
@@ -122,7 +116,7 @@ func (d *h264Decoder) decode(nalu []byte) (*Frame, error) {
 			return nil, fmt.Errorf("av_frame_get_buffer() err")
 		}
 
-		d.swsCtx = C.sws_getContext(d.srcFrame.width, d.srcFrame.height, 3,
+		d.swsCtx = C.sws_getContext(d.srcFrame.width, d.srcFrame.height, C.AV_PIX_FMT_YUV420P,
 			d.dstFrame.width, d.dstFrame.height, (int32)(d.dstFrame.format), C.SWS_BILINEAR, nil, nil, nil)
 		if d.swsCtx == nil {
 			return nil, fmt.Errorf("sws_getContext() err")
@@ -139,10 +133,12 @@ func (d *h264Decoder) decode(nalu []byte) (*Frame, error) {
 		return nil, fmt.Errorf("sws_scale() err")
 	}
 
-	return &Frame{
-		Data:   d.dstFramePtr,
+	// embed frame into an image.Image
+	return &image.RGBA{
+		Pix:    d.dstFramePtr,
 		Stride: 4 * (int)(d.dstFrame.width),
-		Height: (int)(d.dstFrame.height),
-		Width:  (int)(d.dstFrame.width),
+		Rect: image.Rectangle{
+			Max: image.Point{X: (int)(d.dstFrame.width), Y: (int)(d.dstFrame.height)},
+		},
 	}, nil
 }
