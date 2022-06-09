@@ -3,7 +3,6 @@ package decoder
 import "C"
 import (
 	"errors"
-	"image"
 	"unsafe"
 
 	"github.com/ailumiyana/goav-incr/goav/avcodec"
@@ -95,24 +94,23 @@ func New(pxlFmt PixelFormat) (*H264Decoder, error) {
 
 // Decode tries to parse the input data and return list of frames
 // If input data doesn't contain any H.264 frames the list will be empty
-func (h *H264Decoder) Decode(data []byte) ([]*Frame, error) {
-	var frames []*Frame
-
-	for len(data) > 0 {
-		frame, nread, isFrameAvailable, err := h.decodeFrameImpl(data)
-
-		if err != nil && nread < 0 {
-			return nil, err
-		}
-
-		if isFrameAvailable && frame != nil {
-			frames = append(frames, frame)
-		}
-
-		data = data[nread:]
+func (h *H264Decoder) Decode(data []byte) (*Frame, error) {
+	if len(data) <= 0 {
+		return nil, nil
 	}
 
-	return frames, nil
+	frame, nread, isFrameAvailable, err := h.decodeFrameImpl(data)
+
+	if err != nil && nread < 0 {
+		return nil, err
+	}
+
+	if isFrameAvailable && frame != nil {
+		return frame, nil
+	}
+
+	data = data[nread:]
+	return nil, nil
 }
 
 // Close free ups memory used for decoder structures
@@ -125,16 +123,6 @@ func (h *H264Decoder) Close() {
 	avutil.AvFree(unsafe.Pointer(h.context))
 	avutil.AvFrameFree(h.frame)
 	h.pkt.AvFreePacket()
-}
-
-// ToRGBA converts the frame into image.RGBA
-// The returned image share the same memory as the frame
-func (f *Frame) ToRGB() *image.RGBA {
-	return &image.RGBA{
-		Pix:    f.Data,
-		Stride: f.Stride,
-		Rect:   image.Rect(0, 0, f.Width, f.Height),
-	}
 }
 
 func (h *H264Decoder) parse(data []byte, bs int) int {
@@ -178,31 +166,24 @@ func (h *H264Decoder) decodeFrameImpl(data []byte) (*Frame, int, bool, error) {
 	bufferSize := uintptr(h.converter.PredictSize(width, height))
 	buffer := (*uint8)(avutil.AvMalloc(bufferSize))
 	defer avutil.AvFree(unsafe.Pointer(buffer))
-	rgbframe, err := h.converter.Convert(h.context, frame, buffer)
 
+	rgbFrame, err := h.converter.Convert(h.context, frame, buffer)
 	if err != nil {
 		return nil, nread, true, err
 	}
 
-	return newFrame(rgbframe), nread, true, nil
+	return newFrame(rgbFrame), nread, true, nil
 }
 
 func newFrame(frame *avutil.Frame) *Frame {
-	w, h, linesize := frame.Width(), frame.Height(), avutil.Linesize(frame)
-
+	w, h, linesize, data := frame.Width(), frame.Height(), avutil.Linesize(frame), avutil.Data(frame)
+	cData := C.GoBytes(unsafe.Pointer(data[0]), C.int(int(linesize[0])*h))
 	return &Frame{
-		Data:   frameData(frame),
+		Data:   cData,
 		Width:  w,
 		Height: h,
 		Stride: int(linesize[0]),
 	}
-}
-
-func frameData(frame *avutil.Frame) []byte {
-	h, linesize, data := frame.Height(), avutil.Linesize(frame), avutil.Data(frame)
-	size := int(linesize[0]) * h
-
-	return C.GoBytes(unsafe.Pointer(data[0]), C.int(size))
 }
 
 type converter struct {
@@ -233,7 +214,6 @@ func (c *converter) Convert(context *avcodec.Context, frame *avutil.Frame, out_r
 	w, h, pixFmt := context.Width(), context.Height(), context.PixFmt()
 
 	swsCtx := c.context
-
 	if c.context == nil {
 		swsCtx = swscale.SwsGetcontext(
 			w,
@@ -274,7 +254,7 @@ func (c *converter) Convert(context *avcodec.Context, frame *avutil.Frame, out_r
 
 	avp := (*avcodec.Picture)(unsafe.Pointer(c.framergb))
 	avp.AvpictureFill(
-		(*uint8)(out_rgb),
+		out_rgb,
 		(avcodec.PixelFormat)(c.pixFmt),
 		w, h,
 	)

@@ -132,6 +132,8 @@ func (app *Application) Run() error {
 	}
 	defer d.Close()
 
+	fmt.Println("Ready to process frames")
+
 	/* Read frames in a */
 	for {
 		// Grab a frame
@@ -152,22 +154,21 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			frames, err := d.Decode(buf[72:n])
+			frame, err := d.Decode(buf[72:n])
 			if err != nil {
 				fmt.Println("Failed to decode frame. Sleep for 400 ms")
-				time.Sleep(400 * time.Millisecond)
 				continue
 			}
 
-			if len(frames) == 0 {
-				fmt.Println("Empty frame received. Sleep for 400 ms")
-				time.Sleep(400 * time.Millisecond)
+			if frame == nil {
 				continue
 			}
 
-			if err := img.Load(frames[0]); err != nil {
+			if err := img.Load(frame); err != nil {
 				return fmt.Errorf("failed to load image")
 			}
+
+			frame.Data = nil
 		}
 
 		/* Skip empty frame */
