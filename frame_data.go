@@ -27,9 +27,9 @@ func NewFrameData() *FrameData {
 
 // Close Simplify memory management for each gocv.Mat of FrameData
 func (fd *FrameData) Close() {
-	fd.ImgSource.Close()
-	fd.ImgScaled.Close()
-	fd.ImgScaledCopy.Close()
+	_ = fd.ImgSource.Close()
+	_ = fd.ImgScaled.Close()
+	_ = fd.ImgScaledCopy.Close()
 }
 
 // Preprocess Scales image to given width and height

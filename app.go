@@ -7,10 +7,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/hybridgroup/mjpeg"
+	"github.com/mattn/go-mjpeg"
 	"github.com/mike1808/h264decoder/decoder"
 	"github.com/pkg/errors"
 	"github.com/projecthunt/reuseable"
@@ -29,7 +30,6 @@ var colors = []color.RGBA{
 type Application struct {
 	neuralNetwork *gocv.Net
 	layersNames   []string
-	decoder       *decoder.H264Decoder
 	settings      *AppSettings
 }
 
@@ -51,15 +51,9 @@ func NewApp(settings *AppSettings) (*Application, error) {
 		return nil, errors.Wrapf(err, "Can't set target %s", settings.NeuralNetworkSettings.Target)
 	}
 
-	d, err := decoder.New(decoder.PixelFormatBGR)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create H264 decoder")
-	}
-
 	return &Application{
 		neuralNetwork: &neuralNet,
 		layersNames:   outLayerNames,
-		decoder:       d,
 		settings:      settings,
 	}, nil
 }
@@ -128,8 +122,6 @@ func (app *Application) Run() error {
 		}
 	}
 
-	fmt.Println("Ready to receive data")
-
 	/* Prepare frame */
 	img := NewFrameData()
 	buf := make([]byte, 1514)
@@ -143,7 +135,6 @@ func (app *Application) Run() error {
 				break
 			}
 		} else if pc != nil {
-			fmt.Println("Read from pc")
 			n, _, err := pc.ReadFrom(buf)
 			if err != nil {
 				return fmt.Errorf("failed to read from buffer: %w", err)
@@ -155,19 +146,24 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			frames, err := app.decoder.Decode(buf[72:n])
+			d, err := decoder.New(decoder.PixelFormatBGR)
 			if err != nil {
+				return errors.Wrap(err, "failed to create H264 decoder")
+			}
+
+			frames, err := d.Decode(buf[72:n])
+			if err != nil {
+				d.Close()
 				fmt.Println("Failed to decode frame. Sleep for 400 ms")
 				time.Sleep(400 * time.Millisecond)
 				continue
 			}
 
+			d.Close()
+
 			if len(frames) == 0 {
 				continue
 			}
-
-			fmt.Println(frames[0].Width)
-			fmt.Println(frames[0].Height)
 
 			if err := img.Load(frames[0]); err != nil {
 				return fmt.Errorf("failed to load image")
@@ -183,7 +179,7 @@ func (app *Application) Run() error {
 
 		/* Scale frame */
 		var width, height int
-		if settings.Source == "camera" && settings.CameraSettings.ReducedWidth != settings.CameraSettings.Width && settings.CameraSettings.ReducedHeight != settings.CameraSettings.Height {
+		if settings.Source == "camera" {
 			width = settings.CameraSettings.ReducedWidth
 			height = settings.CameraSettings.ReducedHeight
 		} else {
@@ -222,7 +218,7 @@ func (app *Application) Run() error {
 			if err != nil {
 				log.Printf("Error while decoding to JPG (mjpeg): %s", err.Error())
 			} else {
-				stream.UpdateJPEG(buf.GetBytes())
+				_ = stream.Update(buf.GetBytes())
 			}
 		}
 	}
@@ -230,7 +226,11 @@ func (app *Application) Run() error {
 	// Hard release memory
 	img.Close()
 	app.Close()
-	pc.Close()
+	_ = stream.Close()
+
+	if pc != nil {
+		_ = pc.Close()
+	}
 
 	return nil
 }
@@ -248,9 +248,5 @@ func (app *Application) performDetectionSequential(frame *FrameData, netClasses,
 
 // Close Free memory for underlying objects
 func (app *Application) Close() {
-	app.neuralNetwork.Close()
-
-	if app.decoder != nil {
-		app.decoder.Close()
-	}
+	_ = app.neuralNetwork.Close()
 }

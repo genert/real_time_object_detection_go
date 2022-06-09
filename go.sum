@@ -3,8 +3,9 @@ github.com/ailumiyana/goav-incr v0.1.0/go.mod h1:vE9FL56xPpmPygiA71OjUbbvTmXlMEi
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
-github.com/hybridgroup/mjpeg v0.0.0-20140228234708-4680f319790e h1:xCcwD5FOXul+j1dn8xD16nbrhJkkum/Cn+jTd/u1LhY=
 github.com/hybridgroup/mjpeg v0.0.0-20140228234708-4680f319790e/go.mod h1:eagM805MRKrioHYuU7iKLUyFPVKqVV6um5DAvCkUtXs=
+github.com/mattn/go-mjpeg v0.0.3 h1:0G/+KddrbI5Hnq83B11O1O4vP7Q6L9MsBu6aW71jhUM=
+github.com/mattn/go-mjpeg v0.0.3/go.mod h1:65z7Cj+u5y5K3B8Sy5NtrJFTWAhguGHs9FEkADdx6kE=
 github.com/mike1808/h264decoder v0.0.1 h1:4wmw7RmmNY1vGAsq6t0RbGTX/OWmKso6NYqAVe7LP9Y=
 github.com/mike1808/h264decoder v0.0.1/go.mod h1:nMzAwi8S0h0+sIhqjyakN6adb88SF3JJm3IwHs/8UxQ=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
