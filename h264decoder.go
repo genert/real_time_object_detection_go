@@ -11,6 +11,13 @@ import (
 // #include <libswscale/swscale.h>
 import "C"
 
+// Frame represents decoded frame from H.264 stream
+// Data field will contain bitmap data in the pixel format specified in the decoder
+type Frame struct {
+	Data                  []byte
+	Width, Height, Stride int
+}
+
 func frameData(frame *C.AVFrame) **C.uint8_t {
 	return (**C.uint8_t)(unsafe.Pointer(&frame.data[0]))
 }
@@ -77,7 +84,7 @@ func (d *h264Decoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
-func (d *h264Decoder) decode(nalu []byte) (C.AVFrame, error) {
+func (d *h264Decoder) decode(nalu []byte) (*Frame, error) {
 	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, nalu...)
 
 	// send frame to decoder
@@ -132,5 +139,10 @@ func (d *h264Decoder) decode(nalu []byte) (C.AVFrame, error) {
 		return nil, fmt.Errorf("sws_scale() err")
 	}
 
-	return d.dstFrame, nil
+	return &Frame{
+		Data:   d.dstFramePtr,
+		Stride: 4 * (int)(d.dstFrame.width),
+		Height: (int)(d.dstFrame.height),
+		Width:  (int)(d.dstFrame.width),
+	}, nil
 }

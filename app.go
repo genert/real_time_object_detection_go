@@ -163,10 +163,12 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			if err := img.Load(frame); err != nil {
-				return fmt.Errorf("failed to load image")
+			m, err := gocv.NewMatFromBytes(frame.Height, frame.Width, gocv.MatTypeCV8UC3, frame.Data)
+			if err != nil {
+				return err
 			}
 
+			img.ImgSource = m
 			frame.Data = nil
 		}
 
