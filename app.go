@@ -12,7 +12,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mattn/go-mjpeg"
-	"github.com/mike1808/h264decoder/decoder"
 	"github.com/pkg/errors"
 	"github.com/projecthunt/reuseable"
 	"github.com/rs/cors"
@@ -126,6 +125,12 @@ func (app *Application) Run() error {
 	img := NewFrameData()
 	buf := make([]byte, 1514)
 
+	h264dec, err := newH264Decoder()
+	if err != nil {
+		return errors.Wrap(err, "failed to create H264 decoder")
+	}
+	defer h264dec.close()
+
 	/* Read frames in a */
 	for {
 		// Grab a frame
@@ -146,28 +151,19 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			d, err := decoder.New(decoder.PixelFormatBGR)
+			frame, err := h264dec.decode(buf[72:n])
 			if err != nil {
-				return errors.Wrap(err, "failed to create H264 decoder")
-			}
-
-			frames, err := d.Decode(buf[72:n])
-			if err != nil {
-				d.Close()
 				fmt.Println("Failed to decode frame. Sleep for 400 ms")
 				time.Sleep(400 * time.Millisecond)
 				continue
 			}
 
-			d.Close()
-
-			if len(frames) == 0 {
-				continue
+			frameImg, err := gocv.ImageToMatRGB(frame)
+			if err != nil {
+				return errors.Wrap(err, "failed to convert image to RGB")
 			}
 
-			if err := img.Load(frames[0]); err != nil {
-				return fmt.Errorf("failed to load image")
-			}
+			img.ImgSource = frameImg
 		}
 
 		/* Skip empty frame */
