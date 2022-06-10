@@ -1,13 +1,9 @@
 package ml
 
 import (
-	"bytes"
 	"image"
-	"image/jpeg"
 
 	"gocv.io/x/gocv"
-
-	"github.com/genert/ml/decoder"
 )
 
 // FrameData Wrapper around gocv.Mat
@@ -38,28 +34,4 @@ func (fd *FrameData) Preprocess(width, height int) error {
 	gocv.Resize(fd.ImgSource, &fd.ImgScaled, image.Point{X: width, Y: height}, 0, 0, gocv.InterpolationDefault)
 	fd.ImgScaledCopy = fd.ImgScaled.Clone()
 	return nil
-}
-
-func (fd *FrameData) Load(frame *decoder.Frame) error {
-	m, err := gocv.NewMatFromBytes(frame.Height, frame.Width, gocv.MatTypeCV8UC3, frame.Data)
-	if err != nil {
-		return err
-	}
-
-	fd.ImgSource = m
-	return nil
-}
-
-func matToBytes(im *gocv.Mat) (ans []byte, err error) {
-	stdImage, err := im.ToImage()
-	if err != nil {
-		return ans, err
-	}
-	buf := new(bytes.Buffer)
-	err = jpeg.Encode(buf, stdImage, nil)
-	if err != nil {
-		return ans, err
-	}
-	ans = buf.Bytes()
-	return ans, nil
 }

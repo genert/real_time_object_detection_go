@@ -2,7 +2,6 @@ package ml
 
 import (
 	"fmt"
-	"github.com/genert/ml/decoder"
 	"image"
 	"image/color"
 	"log"
@@ -17,6 +16,8 @@ import (
 	"github.com/projecthunt/reuseable"
 	"github.com/rs/cors"
 	"gocv.io/x/gocv"
+
+	"github.com/genert/ml/decoder"
 )
 
 var colors = []color.RGBA{
@@ -99,6 +100,7 @@ func (app *Application) Run() error {
 		stream = app.StartMJPEGStream()
 	}
 
+	/* Setup video streaming source */
 	var videoCapture *gocv.VideoCapture
 	var err error
 	var pc net.PacketConn
@@ -126,23 +128,17 @@ func (app *Application) Run() error {
 	img := NewFrameData()
 	buf := make([]byte, 1514)
 
-	d, err := decoder.New(decoder.PixelFormatBGR)
-	if err != nil {
-		return errors.Wrap(err, "failed to create H264 decoder")
-	}
-	defer d.Close()
-
 	fmt.Println("Ready to process frames")
 
-	/* Read frames in a */
+	/* Read frames */
 	for {
-		// Grab a frame
+		// Grab a frame from video capture if possible
 		if videoCapture != nil {
 			if ok := videoCapture.Read(&img.ImgSource); !ok {
 				fmt.Println("Can't read next frame, stop grabbing...")
 				break
 			}
-		} else if pc != nil {
+		} else if pc != nil { // Otherwise, read from UDP
 			n, _, err := pc.ReadFrom(buf)
 			if err != nil {
 				return fmt.Errorf("failed to read from buffer: %w", err)
@@ -154,6 +150,13 @@ func (app *Application) Run() error {
 				continue
 			}
 
+			d, err := decoder.New(decoder.PixelFormatBGR)
+			if err != nil {
+				return errors.Wrap(err, "failed to create H264 decoder")
+			}
+
+			defer d.Close()
+
 			frame, err := d.Decode(buf[72:n])
 			if err != nil {
 				fmt.Println("Failed to decode frame. Sleep for 400 ms")
@@ -164,11 +167,13 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			if err := img.Load(frame); err != nil {
-				return fmt.Errorf("failed to load image")
+			// Load data to gocv image
+			m, err := gocv.NewMatFromBytes(frame.Height, frame.Width, gocv.MatTypeCV8UC3, frame.Data)
+			if err != nil {
+				return err
 			}
 
-			frame.Data = nil
+			img.ImgSource = m
 		}
 
 		/* Skip empty frame */
@@ -178,7 +183,7 @@ func (app *Application) Run() error {
 			continue
 		}
 
-		/* Scale frame */
+		/* Scale frame if configured */
 		var width, height int
 		if settings.Source == "camera" {
 			width = settings.CameraSettings.ReducedWidth
@@ -193,7 +198,7 @@ func (app *Application) Run() error {
 			continue
 		}
 
-		/* Detection */
+		/* YOLOv4 Detection */
 		if settings.NeuralNetworkSettings.Enable {
 			detected := app.performDetectionSequential(img, settings.NeuralNetworkSettings.NetClasses, settings.NeuralNetworkSettings.TargetClasses)
 			if len(detected) != 0 {
@@ -207,6 +212,7 @@ func (app *Application) Run() error {
 			}
 		}
 
+		/* Show in window if configured */
 		if settings.MjpegSettings.ImshowEnable {
 			window.IMShow(img.ImgScaled)
 			if window.WaitKey(1) == 27 {
@@ -214,6 +220,7 @@ func (app *Application) Run() error {
 			}
 		}
 
+		/* Stream as MJPEG if configured */
 		if settings.MjpegSettings.Enable {
 			buf, err := gocv.IMEncode(".jpg", img.ImgScaled)
 			if err != nil {

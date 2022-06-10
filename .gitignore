@@ -25,4 +25,4 @@ yolov4.cfg
 yolov4.weights
 
 # Build
-./cmd/ml/ml
+/cmd/ml/ml

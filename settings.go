@@ -12,6 +12,7 @@ import (
 
 // AppSettings Settings for application
 type AppSettings struct {
+	Leaky                      bool                        `json:"leaky"`
 	Source                     string                      `json:"source"`
 	NeuralNetworkSettings      NeuralNetworkSettings       `json:"neural_network_settings"`
 	CameraSettings             *CameraSettings             `json:"camera_settings"`

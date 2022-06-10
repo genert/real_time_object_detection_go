@@ -179,6 +179,8 @@ func (h *H264Decoder) decodeFrameImpl(data []byte) (*Frame, int, bool, error) {
 
 func newFrame(frame *avutil.Frame) *Frame {
 	w, h, linesize, data := frame.Width(), frame.Height(), avutil.Linesize(frame), avutil.Data(frame)
+
+	// This line has the highest pressure on garbage collector.s
 	cData := C.GoBytes(unsafe.Pointer(data[0]), C.int(int(linesize[0])*h))
 	return &Frame{
 		Data:   cData,
