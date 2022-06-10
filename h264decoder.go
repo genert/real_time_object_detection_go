@@ -79,7 +79,7 @@ func (d *h264Decoder) close() {
 }
 
 func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
-	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, []uint8(nalu)...)
+	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, nalu...)
 
 	// send frame to decoder
 	d.avPacket.data = (*C.uint8_t)(C.CBytes(nalu))
