@@ -128,6 +128,13 @@ func (app *Application) Run() error {
 	img := NewFrameData()
 	buf := make([]byte, 1514)
 
+	d, err := decoder.New(decoder.PixelFormatBGR)
+	if err != nil {
+		return errors.Wrap(err, "failed to create H264 decoder")
+	}
+
+	defer d.Close()
+
 	fmt.Println("Ready to process frames")
 
 	/* Read frames */
@@ -139,6 +146,7 @@ func (app *Application) Run() error {
 				break
 			}
 		} else if pc != nil { // Otherwise, read from UDP
+
 			n, _, err := pc.ReadFrom(buf)
 			if err != nil {
 				return fmt.Errorf("failed to read from buffer: %w", err)
@@ -150,12 +158,7 @@ func (app *Application) Run() error {
 				continue
 			}
 
-			d, err := decoder.New(decoder.PixelFormatBGR)
-			if err != nil {
-				return errors.Wrap(err, "failed to create H264 decoder")
-			}
-
-			defer d.Close()
+			fmt.Println("Passing data from UDP to decoder")
 
 			frame, err := d.Decode(buf[72:n])
 			if err != nil {
@@ -164,6 +167,7 @@ func (app *Application) Run() error {
 			}
 
 			if frame == nil {
+				fmt.Println("Empty frame decoded. Skipping frame rendering")
 				continue
 			}
 
